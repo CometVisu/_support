@@ -5,26 +5,28 @@
 #
 # This script assumes that the GitHub repository already has a branch named "release-<VERSION>"
 
-VERSION="$1"
+VERSIONBRANCH="$1"
 
-if [[ -z $VERSION ]]; then
+if [ -z $VERSIONBRANCH ] || [ x"$VERSIONBRANCH" = "x-help" ]; then
   echo "Call script with the new version name as parameter like
-  $0 \"1.2.3\" [-dry]"
+  $0 \"1.2.3\" [\"-RC1\"] [-force]"
+  echo
+  echo The 1st parameter must exist as a branch name in the Git
+  echo The 2nd parameter is optional and can be used to add a postfix to the release name
+  echo As a last parameter -force can the used to overwrite the build directory when it is already existing
   exit
 fi
 
+POSTFIX=""
+if [ -n $2 ] && [ ! x"$2" = "x-force" ] ; then
+  POSTFIX="$2"
+fi
+
+VERSION="$VERSIONBRANCH$POSTFIX"
 WORKDIR="/tmp/cvrelease"
-RELEASE_BRANCH="release-$VERSION"
+RELEASE_BRANCH="release-$VERSIONBRANCH"
 RELEASE_DIR="release_$VERSION"
 GIT_CMD="git"
-GIT_DRY_CMD=""
-
-DRYRUN=0
-if [ x"$2" = "x-dry" ] || [ x"$3" = "x-dry" ] ; then
-  echo "Using option: Dry run!"
-  DRYRUN=1
-  GIT_DRY_CMD="--dry-run"
-fi
 
 FORCE=0
 if [ x"$2" = "x-force" ] || [ x"$3" = "x-force" ] ; then
@@ -40,7 +42,6 @@ cd "$( dirname "${BASH_SOURCE[0]}" )"
 SCRIPT_DIR=`pwd`
 
 echo "source dir: '$SCRIPT_DIR'"
-echo "option dry: $DRYRUN"
 echo "option force: $FORCE"
 
 # make sure the temp directory does not exist
@@ -101,12 +102,7 @@ chmod -R a+w release/config
 mkdir -p release/config/backup
 chmod -R a+w release/config/backup
 
-echo Ready to commit...
-
-$GIT_CMD add release
-$GIT_CMD commit -a -m "New release: $VERSION"  
-# TODO implement the following line based on current discussions
-$GIT_CMD push $GIT_DRY_CMD origin $RELEASE_BRANCH:refs/heads/$RELEASE_BRANCH-testX
+echo Ready to create...
 
 cd ..
 tar -cjp --exclude-vcs  -f CometVisu_$VERSION.tar.bz2 CometVisu
@@ -118,6 +114,6 @@ echo Release package is stored at $WORKDIR/CometVisu_$VERSION.tar.bz2
 echo
 echo Next steps:
 echo Go to GitHub, releases
-echo -> Draft new Release
-echo -> Give release the number (like v1.2.3-pre4)
-echo -> Drag and drop the release package file on the relevant field
+echo "-> Draft new Release"
+echo "-> Give release the number (like v$VERSION)"
+echo "-> Drag and drop the release package file on the relevant field"
